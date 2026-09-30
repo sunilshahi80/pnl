@@ -1,0 +1,1473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+<title>P&amp;L Command Center</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  /* ——— all CSS unchanged ——— */
+  :root{
+    --navy-950:#0A1220; --navy-900:#0E1A2E; --navy-800:#152742; --navy-700:#1E3552;
+    --blue-500:#2F6FED; --blue-400:#5C8CF2;
+    --amber-400:#F2A93B; --green-500:#34C77B; --red-500:#E2544B;
+    --white:#F5F7FA; --gray-300:#B7C0D1; --gray-500:#8B95A8; --gray-700:#54607A;
+    --line:#233A5C;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--navy-950);color:var(--white);font-family:'Inter',sans-serif;}
+  .display{font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:0.02em;}
+  ::-webkit-scrollbar{width:6px;height:6px;}
+  ::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px;}
+
+  #shell{display:grid;grid-template-columns:210px 1fr;min-height:100vh;}
+  nav.sidenav{background:var(--navy-900);border-right:1px solid var(--line);padding:22px 14px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:4px;}
+  .side-brand{display:flex;align-items:center;gap:10px;padding:0 8px 22px;border-bottom:1px solid var(--line);margin-bottom:16px;}
+  .side-brand .badge{width:36px;height:36px;border-radius:6px;background:linear-gradient(145deg,var(--blue-500),var(--blue-400));display:flex;align-items:center;justify-content:center;font-family:'Oswald',sans-serif;font-weight:700;font-size:15px;color:var(--navy-950);flex-shrink:0;}
+  .side-brand h1{font-size:14px;margin:0;font-weight:600;line-height:1.25;}
+  .navitem{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:7px;color:var(--gray-300);font-size:13.5px;font-weight:500;cursor:pointer;transition:all .12s ease;border:none;background:transparent;text-align:left;width:100%;font-family:'Inter',sans-serif;}
+  .navitem .ic{width:18px;text-align:center;font-family:'Oswald',sans-serif;font-size:12px;color:var(--gray-500);}
+  .navitem:hover{background:var(--navy-800);color:var(--white);}
+  .navitem.active{background:var(--blue-500);color:var(--white);}
+  .navitem.active .ic{color:var(--white);}
+  .side-foot{margin-top:auto;padding-top:14px;border-top:1px solid var(--line);}
+  .side-foot button{width:100%;margin-bottom:6px;}
+
+  main.mainpane{min-width:0;}
+  header.topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 28px;border-bottom:1px solid var(--line);flex-wrap:wrap;position:sticky;top:0;background:var(--navy-950);z-index:20;}
+  .page-title h2{margin:0;font-size:19px;font-weight:600;}
+  .page-title p{margin:2px 0 0;font-size:12px;color:var(--gray-500);}
+  .top-actions{display:flex;align-items:center;gap:8px;position:relative;flex-wrap:wrap;}
+  .file-name{font-size:11px;color:var(--gray-500);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+  .btn{appearance:none;border:1px solid var(--line);background:var(--navy-800);color:var(--white);padding:9px 15px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s ease;font-family:'Inter',sans-serif;}
+  .btn:hover{background:var(--navy-700);border-color:var(--blue-400);}
+  .btn.primary{background:var(--blue-500);border-color:var(--blue-500);}
+  .btn.primary:hover{background:var(--blue-400);}
+  .btn.ghost{background:transparent;}
+  .btn:focus-visible{outline:2px solid var(--amber-400);outline-offset:2px;}
+  .btn.small{padding:6px 10px;font-size:11.5px;}
+
+  .content{padding:20px 28px 60px;}
+  .date-range-line{font-size:12px;color:var(--gray-500);margin:-6px 0 16px;}
+  .date-range-line b{color:var(--gray-300);font-weight:600;}
+
+  #emptyState,#loadingState{display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;min-height:70vh;gap:16px;}
+  #emptyState.show,#loadingState.show{display:flex;}
+  .dropzone{width:min(560px,90%);border:2px dashed var(--line);border-radius:14px;padding:48px 32px;cursor:pointer;transition:all .15s ease;}
+  .dropzone.drag{border-color:var(--blue-400);background:rgba(47,111,237,0.08);}
+  .dropzone .icon{font-family:'Oswald',sans-serif;font-size:36px;font-weight:700;color:var(--blue-400);margin-bottom:10px;}
+  .dropzone h2{margin:0 0 8px;font-size:19px;}
+  .dropzone p{margin:0;color:var(--gray-500);font-size:13.5px;line-height:1.6;}
+  #emptyState .hint{color:var(--gray-500);font-size:12px;max-width:520px;line-height:1.6;}
+  .spinner{width:38px;height:38px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--blue-400);animation:spin .8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .page{display:none;}
+  .page.active{display:block;}
+
+  .scoreboard{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:14px;}
+  .scoreboard.cols4{grid-template-columns:repeat(4,1fr);}
+  .kpi{background:var(--navy-900);border:1px solid var(--line);border-radius:10px;padding:14px 15px;position:relative;overflow:hidden;}
+  .kpi::before{content:"";position:absolute;top:0;left:0;width:4px;height:100%;background:var(--blue-500);}
+  .kpi.amber::before{background:var(--amber-400);}
+  .kpi.green::before{background:var(--green-500);}
+  .kpi.red::before{background:var(--red-500);}
+  .kpi .label{font-size:10px;color:var(--gray-500);letter-spacing:0.05em;text-transform:uppercase;margin-bottom:6px;}
+  .kpi .value{font-family:'Oswald',sans-serif;font-size:18.5px;font-weight:600;}
+  .kpi .value.neg{color:var(--red-500);}
+  .kpi .sub{font-size:10px;color:var(--gray-500);margin-top:3px;}
+
+  .grid2{display:grid;grid-template-columns:1.5fr 1fr;gap:16px;margin-bottom:16px;}
+  #page-products .grid2 { grid-template-columns: 1fr 1fr; }
+
+  .panel{background:var(--navy-900);border:1px solid var(--line);border-radius:10px;padding:18px 20px;}
+  .panel h3{margin:0 0 3px;font-size:14.5px;font-weight:600;}
+  .panel .panel-sub{font-size:11.5px;color:var(--gray-500);margin:0 0 14px;}
+  .panel canvas{max-height:280px;}
+
+  table.data-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  table.data-table th{text-align:right;color:var(--gray-500);font-size:10px;text-transform:uppercase;letter-spacing:0.03em;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap;}
+  table.data-table th:first-child,table.data-table td:first-child{text-align:left;}
+  table.data-table td{padding:7px 10px;border-bottom:1px solid var(--line);color:var(--gray-300);white-space:nowrap;text-align:right;}
+  table.data-table td a {
+    color: var(--blue-400);
+    text-decoration: none;
+  }
+  table.data-table td a:hover {
+    text-decoration: underline;
+    color: var(--blue-500);
+  }
+
+  /* Freeze header row + first column */
+  .table-wrap {
+    max-height: 460px;
+    overflow: auto;
+    position: relative;
+  }
+
+  .data-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--navy-800);
+  }
+
+  .data-table td:first-child,
+  .data-table th:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--navy-900);
+  }
+
+  .data-table thead th:first-child {
+    z-index: 3;
+    background: var(--navy-800);
+  }
+
+  .data-table td:first-child,
+  .data-table th:first-child {
+    border-right: 1px solid var(--line);
+  }
+  table.data-table tr:hover td{color:var(--white);}
+  table.data-table tr.group-row{cursor:pointer;}
+  table.data-table tr.group-row td:first-child{font-weight:600;color:var(--white);}
+  table.data-table tr.group-row td:first-child::before{content:"\25B8 ";color:var(--blue-400);font-size:10px;}
+  table.data-table tr.group-row.expanded td:first-child::before{content:"\25BE ";}
+  table.data-table tr.sub-row td{color:var(--gray-500);font-size:11.5px;}
+  table.data-table tr.sub-row td:first-child{padding-left:22px;}
+  table.data-table tr.month-row{cursor:pointer;}
+  table.data-table tr.month-row td:first-child{padding-left:22px;}
+  table.data-table tr.month-row td:first-child::before{content:"\25B8 ";color:var(--blue-400);font-size:10px;}
+  table.data-table tr.month-row.expanded td:first-child::before{content:"\25BE ";}
+  table.data-table tr.drill-row td{color:var(--gray-500);font-size:11.5px;}
+  table.data-table tr.drill-row td:first-child{padding-left:38px;}
+  table.data-table tr.total-row td{border-top:2px solid var(--line);border-bottom:none;font-weight:700;color:var(--white);}
+  .neg{color:var(--red-500) !important;}
+  .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .table-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:10px;flex-wrap:wrap;}
+  .search-box,.select-box{background:var(--navy-800);border:1px solid var(--line);border-radius:7px;padding:8px 12px;color:var(--white);font-size:12.5px;font-family:'Inter',sans-serif;}
+  .search-box{width:220px;}
+  .select-box{cursor:pointer;}
+  .pagination{display:flex;align-items:center;gap:10px;justify-content:flex-end;margin-top:12px;font-size:12px;color:var(--gray-500);}
+
+  .filter-row{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;}
+  .filter-row label{font-size:11.5px;color:var(--gray-500);display:flex;align-items:center;gap:6px;}
+
+  .leaderboard{display:flex;flex-direction:column;}
+  .lb-row{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--line);}
+  .lb-row:last-child{border-bottom:none;}
+  .lb-rank{font-family:'Oswald',sans-serif;font-weight:700;font-size:13px;width:24px;height:24px;border-radius:6px;background:var(--navy-800);color:var(--gray-300);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .lb-row:nth-child(1) .lb-rank{background:var(--amber-400);color:var(--navy-950);}
+  .lb-row:nth-child(2) .lb-rank{background:#C9CFDC;color:var(--navy-950);}
+  .lb-row:nth-child(3) .lb-rank{background:#B0784F;color:var(--navy-950);}
+  .lb-info{flex:1;min-width:0;}
+  .lb-name{font-size:12.5px;color:var(--white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .lb-name a{color:var(--blue-400);text-decoration:none;cursor:pointer;}
+  .lb-name a:hover{text-decoration:underline;color:var(--blue-500);}
+  .lb-meta{font-size:10.5px;color:var(--gray-500);}
+  .lb-value{font-family:'Oswald',sans-serif;font-size:12.5px;color:var(--blue-400);flex-shrink:0;}
+  .lb-value.warn{color:var(--red-500);}
+  .empty-note{text-align:center;color:var(--gray-500);font-size:13px;padding:30px 0;}
+
+  .drilldown-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+  .info-icon{width:18px;height:18px;border-radius:50%;background:var(--navy-800);border:1px solid var(--line);color:var(--gray-500);font-size:11px;display:flex;align-items:center;justify-content:center;cursor:help;flex-shrink:0;}
+
+  .metric-toggle button {
+    background:var(--navy-800);
+    border:none;
+    color:var(--gray-300);
+    padding:5px 10px;
+    border-radius:5px;
+    font-size:11px;
+    font-weight:600;
+    cursor:pointer;
+    font-family:'Inter',sans-serif;
+    transition:all .15s ease;
+  }
+  .metric-toggle button:hover {
+    background:var(--navy-700);
+    color:var(--white);
+  }
+  .metric-toggle button.active {
+    background:var(--green-500);
+    color:var(--navy-950);
+  }
+
+  /* ========== MOBILE ========== */
+  @media (max-width:1000px){
+    #shell{grid-template-columns:1fr;}
+    nav.sidenav{position:static;height:auto;flex-direction:row;overflow-x:auto;}
+    .scoreboard{grid-template-columns:repeat(2,1fr);}
+    .scoreboard.cols4{grid-template-columns:repeat(2,1fr);}
+    .grid2{grid-template-columns:1fr;}
+    #page-products .grid2 { grid-template-columns:1fr; }
+  }
+
+  @media (max-width:768px){
+    .table-wrap { max-height: 300px; }
+    #shell {
+      grid-template-columns:1fr;
+      padding-bottom:78px;
+    }
+    nav.sidenav {
+      position:fixed;
+      bottom:0;
+      left:0;
+      right:0;
+      top:auto;
+      height:68px;
+      flex-direction:row;
+      align-items:center;
+      overflow:hidden;
+      background:var(--navy-900);
+      border-right:none;
+      border-top:1px solid var(--line);
+      padding:4px 4px;
+      z-index:100;
+      gap:2px;
+      flex-wrap:nowrap;
+    }
+    .side-brand { display:none; }
+    .navitem {
+      flex: 1 1 0;
+      min-width: 0;
+      flex-direction:column;
+      padding:2px 2px;
+      font-size:0;
+      gap:0px;
+      border-radius:5px;
+      align-items:center;
+      justify-content:center;
+      white-space:nowrap;
+    }
+    .navitem .ic {
+      font-size:18px;
+      width:auto;
+      line-height:1.2;
+      color:var(--gray-300);
+    }
+    .navitem .label {
+      display:block;
+      font-size:7px;
+      line-height:1.2;
+      margin-top:2px;
+      color:var(--gray-300);
+      font-weight:500;
+      letter-spacing:0.02em;
+    }
+    .navitem.active .ic,
+    .navitem.active .label { color:var(--white); }
+    .side-foot {
+      display:flex;
+      flex-direction:row;
+      margin-top:0;
+      padding-top:0;
+      border-top:none;
+      gap:2px;
+      flex: 0 0 auto;
+      margin-left:0;
+    }
+    .side-foot .btn {
+      font-size:7px;
+      padding:2px 4px;
+      min-height:28px;
+      min-width:32px;
+      flex: 1 1 auto;
+      background:var(--navy-800);
+      border:1px solid var(--line);
+      border-radius:5px;
+      color:var(--gray-300);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .side-foot .btn:hover { background:var(--navy-700); }
+    header.topbar {
+      padding:10px 12px;
+      flex-direction:column;
+      align-items:stretch;
+      gap:6px;
+    }
+    .content { padding:10px 12px 90px; }
+    .scoreboard { grid-template-columns:1fr 1fr; gap:8px; }
+    .scoreboard.cols4 { grid-template-columns:1fr 1fr; }
+    .kpi .value { font-size:16px; }
+    .grid2 { grid-template-columns:1fr; gap:12px; }
+    #page-products .grid2 { grid-template-columns:1fr; }
+    .panel { padding:12px 14px; }
+    .panel canvas { max-height:200px; }
+    .metric-toggle button { padding:5px 8px; font-size:10px; }
+
+    #dateRangeBar > div {
+      display:flex;
+      flex-direction:row;
+      flex-wrap:wrap;
+      align-items:center;
+      gap:4px 6px;
+      justify-content:flex-start;
+    }
+    #dateRangeBar label {
+      font-size:10px;
+      display:flex;
+      align-items:center;
+      gap:2px;
+      color:var(--gray-500);
+    }
+    #dateRangeBar input[type="date"] {
+      background:var(--navy-800);
+      border:1px solid var(--line);
+      color:var(--white);
+      border-radius:4px;
+      padding:4px 6px;
+      font-size:11px;
+      width:auto;
+      max-width:160px;
+      font-family:'Inter',sans-serif;
+    }
+    #dateRangeBar .btn {
+      padding:4px 8px;
+      font-size:10px;
+      min-height:28px;
+    }
+    #dateRangeBar .panel-sub { font-size:10px; margin:0; }
+    #dateRangeBar .cal { display:none; }
+
+    table.data-table { font-size:10px; }
+    table.data-table td, table.data-table th { padding:4px 6px; }
+    .table-toolbar { flex-direction:column; align-items:stretch; }
+    .search-box { width:100%; }
+    .filter-row { flex-direction:column; align-items:stretch; }
+    .filter-row label { flex-wrap:wrap; }
+    .drilldown-head { flex-wrap:wrap; }
+    .drilldown-head select { flex:1; min-width:100px; }
+    .lb-name { font-size:11px; }
+    .lb-value { font-size:11px; }
+  }
+
+  @media (max-width:480px){
+    .table-wrap { max-height: 250px; }
+    .scoreboard { grid-template-columns:1fr 1fr; }
+    .scoreboard.cols4 { grid-template-columns:1fr 1fr; }
+    .kpi { padding:6px 6px; }
+    .kpi .value { font-size:13px; }
+    #dateRangeBar input[type="date"] { max-width:140px; font-size:10px; padding:3px 4px; }
+    #dateRangeBar .btn { font-size:9px; padding:3px 6px; }
+    .side-foot .btn { font-size:6px; min-width:28px; padding:2px 3px; }
+    #shell { padding-bottom:68px; }
+    nav.sidenav { height:58px; }
+    .navitem .ic { font-size:16px; }
+    .navitem .label { font-size:6px; }
+  }
+</style>
+</head>
+<body>
+<div id="shell">
+  <nav class="sidenav">
+    <div class="side-brand">
+      <div class="badge display">PL</div>
+      <h1>P&amp;L Command<br>Center</h1>
+    </div>
+    <button class="navitem active" data-page="overview"><span class="ic">01</span><span class="label">Overview</span></button>
+    <button class="navitem" data-page="brands"><span class="ic">02</span><span class="label">Brands</span></button>
+    <button class="navitem" data-page="stores"><span class="ic">03</span><span class="label">Stores</span></button>
+    <button class="navitem" data-page="products"><span class="ic">04</span><span class="label">Products</span></button>
+    <div class="side-foot">
+      <button class="btn ghost small" id="refreshSheetBtn" style="display:none;">&#8635; Refresh</button>
+      <button class="btn ghost small" id="loadNewBtn" style="display:none;">&#128196; Upload</button>
+      <button class="btn ghost small" id="clearCacheBtn" style="display:none;">🗑 Clear Cache</button>
+    </div>
+  </nav>
+
+  <main class="mainpane">
+    <header class="topbar">
+      <div class="page-title">
+        <h2 id="pageTitle" class="display">Overview</h2>
+        <p id="pageSub">Year-to-date P&amp;L across the whole business</p>
+      </div>
+      <div class="top-actions">
+        <span class="file-name" id="syncStatus"></span>
+      </div>
+    </header>
+
+    <div class="content">
+      <div class="panel" id="dateRangeBar" style="display:none;margin-bottom:16px;">
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+          <span class="cal">&#128197;</span>
+          <label style="font-size:12px;color:var(--gray-500);">From <input type="date" id="grFromDate" style="background:var(--navy-800);border:1px solid var(--line);color:var(--white);border-radius:6px;padding:6px 9px;font-size:12.5px;font-family:'Inter',sans-serif;margin-left:6px;"></label>
+          <label style="font-size:12px;color:var(--gray-500);">To <input type="date" id="grToDate" style="background:var(--navy-800);border:1px solid var(--line);color:var(--white);border-radius:6px;padding:6px 9px;font-size:12.5px;font-family:'Inter',sans-serif;margin-left:6px;"></label>
+          <button class="btn small primary" id="grApply">Apply</button>
+          <button class="btn small" id="grReset">Reset</button>
+          <span class="panel-sub" id="boundsHint" style="margin:0;"></span>
+        </div>
+      </div>
+      <div id="emptyState" class="show">
+        <div class="dropzone" id="dropzone">
+          <div class="icon display">XLS</div>
+          <h2>Connecting to your Google Sheet&hellip;</h2>
+          <p>If it doesn't connect automatically, drop your Data-sheet export here instead (.xlsx or .csv).<br>Processed entirely in your browser &mdash; nothing is uploaded anywhere.</p>
+        </div>
+      </div>
+
+      <div id="loadingState">
+        <div class="spinner"></div>
+        <p id="loadingText" style="color:var(--gray-300);font-size:13.5px;">Checking Google Sheet&hellip;</p>
+      </div>
+
+      <!-- ============ OVERVIEW ============ -->
+      <div class="page" id="page-overview">
+        <p class="date-range-line" id="ov-dateLine"></p>
+        <div class="scoreboard" id="ov-scoreboard1"></div>
+        <div class="scoreboard cols4" id="ov-scoreboard2" style="margin-top:-2px;"></div>
+        <div class="grid2">
+          <div class="panel">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+              <div><h3>Trend</h3><p class="panel-sub">Monthly, current date range</p></div>
+              <div class="metric-toggle" id="ov-trendToggle" style="display:flex;background:var(--navy-800);border:1px solid var(--line);border-radius:7px;padding:3px;gap:2px;flex-wrap:wrap;">
+                <button class="active" data-metric="netSales">Net Sales</button>
+                <button data-metric="profitLC">Profit (LC)</button>
+                <button data-metric="profitWS">Profit (WS)</button>
+                <button data-metric="qty">Units</button>
+                <button data-metric="discount">Discount</button>
+              </div>
+            </div>
+            <canvas id="ov-trendChart"></canvas>
+          </div>
+          <div class="panel">
+            <h3>Brand Mix</h3>
+            <p class="panel-sub">Share of net sales</p>
+            <canvas id="ov-brandDonut"></canvas>
+          </div>
+        </div>
+        <div class="panel" id="ov-drilldown"></div>
+      </div>
+
+      <!-- ============ BRANDS ============ -->
+      <div class="page" id="page-brands">
+        <p class="date-range-line" id="br-dateLine"></p>
+        <div class="filter-row">
+          <label>Store: <select class="select-box" id="br-storeFilter"><option value="">All Stores</option></select></label>
+        </div>
+        <div class="panel" style="margin-bottom:16px;">
+          <div class="table-toolbar">
+            <div><h3 style="margin-bottom:2px;">Brand P&amp;L</h3><p class="panel-sub" style="margin:0;">Click a brand → months; click a month → stores</p></div>
+          </div>
+          <div class="table-wrap"><table class="data-table" id="br-table"></table></div>
+        </div>
+        <div class="panel" id="br-drilldown"></div>
+      </div>
+
+      <!-- ============ STORES ============ -->
+      <div class="page" id="page-stores">
+        <p class="date-range-line" id="st-dateLine"></p>
+        <div class="filter-row">
+          <label>Brand: <select class="select-box" id="st-brandFilter"><option value="">All Brands</option></select></label>
+        </div>
+        <div class="panel" style="margin-bottom:16px;">
+          <div class="table-toolbar">
+            <div><h3 style="margin-bottom:2px;">Store P&amp;L</h3><p class="panel-sub" style="margin:0;">Click a store → months; click a month → brands</p></div>
+          </div>
+          <div class="table-wrap"><table class="data-table" id="st-table"></table></div>
+        </div>
+        <div class="panel" id="st-drilldown"></div>
+      </div>
+
+      <!-- ============ PRODUCTS (with equal widths & clickable links) ============ -->
+      <div class="page" id="page-products">
+        <p class="date-range-line" id="pr-dateLine"></p>
+        <div class="filter-row">
+          <label>Brand: <select class="select-box" id="pr-brandFilter"><option value="">All Brands</option></select></label>
+          <label>Store: <select class="select-box" id="pr-storeFilter"><option value="">All Stores</option></select></label>
+        </div>
+        <div class="grid2">
+          <div class="panel">
+            <h3>Most Sold Articles &mdash; by Units</h3>
+            <p class="panel-sub">Top 10</p>
+            <div class="leaderboard" id="pr-topUnitsLeaderboard"></div>
+          </div>
+          <div class="panel">
+            <h3>Most Sold Articles &mdash; by Value</h3>
+            <p class="panel-sub">Top 10, net sales</p>
+            <div class="leaderboard" id="pr-topValueLeaderboard"></div>
+          </div>
+        </div>
+        <div class="grid2">
+          <div class="panel">
+            <h3>Most Profitable Articles</h3>
+            <p class="panel-sub">By profit in Landed Cost terms</p>
+            <div class="leaderboard" id="pr-topLeaderboard"></div>
+          </div>
+          <div class="panel">
+            <h3>Loss-Making Articles</h3>
+            <p class="panel-sub">Negative margin &mdash; candidates to re-price or cut</p>
+            <div class="leaderboard" id="pr-bottomLeaderboard"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="table-toolbar">
+            <div><h3 style="margin-bottom:2px;">All Articles</h3><p class="panel-sub" style="margin:0;">Search, sort, and page through every article</p></div>
+            <input class="search-box" id="pr-search" placeholder="Search article code or brand&hellip;">
+          </div>
+          <div class="table-wrap"><table class="data-table" id="pr-table"></table></div>
+          <div class="pagination">
+            <button class="btn small" id="pr-prev">&larr; Prev</button>
+            <span id="pr-pageLabel">Page 1</span>
+            <button class="btn small" id="pr-next">Next &rarr;</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script>
+(function(){
+  // ================================================================
+  //  🔽 唯一需要修改的地方：换成你的 Google Sheet ID
+  // ================================================================
+  const SHEET_ID = '1SozY2pwqNdBP8sH7LKaXCfyncwZTuUp-uX_e5PNn3nQ';  // <-- 替换这里
+  const API_KEY = 'AIzaSyDpRO0J3DQpm0MIE_gcncDXjc7dXhhsbHI';       // 公共 API key
+
+  // ================================================================
+  const CACHE_KEY = 'pnlCommandCenter_cache_v2';
+  const COLORS = ['#2F6FED','#F2A93B','#34C77B','#E2544B','#8B6FED','#5C8CF2','#E28C3B','#4BC7A9','#C9CFDC','#B0784F','#7A94B8','#D9558C'];
+  const fmtMoney = n => 'Rs. ' + Math.round(n).toLocaleString('en-IN');
+  const fmtNum = n => Math.round(n).toLocaleString('en-IN');
+  const fmtPct = n => (isFinite(n) ? n.toFixed(1) : '0.0') + '%';
+  const fmtDate = iso => { if(!iso) return ''; const [y,m,d]=iso.split('-'); const names=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return d+' '+names[parseInt(m,10)-1]+' '+y; };
+
+  // ---------- Helper: local date string YYYY-MM-DD ----------
+  function toLocalDateStr(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return y + '-' + m + '-' + d;
+  }
+
+  // ---------- OFFLINE CACHE (IndexedDB) ----------
+  const CACHE_DB = 'pnl_offline_cache';
+  const CACHE_STORE = 'kv';
+
+  function openCacheDB() {
+    return new Promise((resolve, reject) => {
+      if(!window.indexedDB) { reject(new Error('IndexedDB not available')); return; }
+      const req = indexedDB.open(CACHE_DB, 1);
+      req.onupgradeneeded = () => {
+        if(!req.result.objectStoreNames.contains(CACHE_STORE)) {
+          req.result.createObjectStore(CACHE_STORE);
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function cacheSet(key, value) {
+    try {
+      const db = await openCacheDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(CACHE_STORE, 'readwrite');
+        const store = tx.objectStore(CACHE_STORE);
+        store.put(value, key);
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => reject(tx.error);
+      });
+    } catch(e) {
+      console.warn('Cache write failed:', e);
+      return false;
+    }
+  }
+
+  async function cacheGet(key) {
+    try {
+      const db = await openCacheDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(CACHE_STORE, 'readonly');
+        const store = tx.objectStore(CACHE_STORE);
+        const req = store.get(key);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    } catch(e) {
+      console.warn('Cache read failed:', e);
+      return undefined;
+    }
+  }
+
+  // ---------- Clear cache ----------
+  async function clearCache() {
+    try {
+      const db = await openCacheDB();
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(CACHE_STORE, 'readwrite');
+        tx.objectStore(CACHE_STORE).clear();
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => reject(tx.error);
+      });
+      console.log('Cache cleared successfully');
+      syncStatus.textContent = '🗑 Cache cleared';
+      dataSource = 'none';
+      lastSyncTime = null;
+      records = [];
+      setTimeout(() => loadData(false), 300);
+      return true;
+    } catch(e) {
+      console.warn('Clear cache failed:', e);
+      syncStatus.textContent = '❌ Clear cache failed: ' + e.message;
+      return false;
+    }
+  }
+  window.clearCache = clearCache;
+
+  // ---------- Global state ----------
+  let records = [];
+  let allBrands=[], allStores=[];
+  let minDate=null, maxDate=null;
+  let fromDate=null, toDate=null;
+  let currentPage='overview';
+  let ovTrendMetric='netSales';
+  let charts = {};
+  let expandState = {brands:new Set(), stores:new Set()};
+  let expandMonth = {brands: new Set(), stores: new Set()};
+  let ovDrillBrand=null, brDrillBrand=null, stDrillStore=null;
+  let stBrandFilterVal='', brStoreFilterVal='', prBrandFilterVal='', prStoreFilterVal='';
+  let prPage=0, prPageSize=25, prSort={key:'netSales', dir:'desc'}, prSearch='';
+
+  let dataSource = 'none';
+  let lastSyncTime = null;
+
+  const emptyState = document.getElementById('emptyState');
+  const loadingState = document.getElementById('loadingState');
+  const loadingText = document.getElementById('loadingText');
+  const syncStatus = document.getElementById('syncStatus');
+  const dateRangeBar = document.getElementById('dateRangeBar');
+  const loadNewBtn = document.getElementById('loadNewBtn');
+  const refreshSheetBtn = document.getElementById('refreshSheetBtn');
+  const clearCacheBtn = document.getElementById('clearCacheBtn');
+  const dropzone = document.getElementById('dropzone');
+
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = '.xlsx,.xls,.csv';
+  fileInput.style.display = 'none';
+  document.body.appendChild(fileInput);
+
+  dropzone.addEventListener('click', () => fileInput.click());
+  loadNewBtn.addEventListener('click', () => fileInput.click());
+  clearCacheBtn.addEventListener('click', () => {
+    if(confirm('Clear offline cache? This will remove saved data and reload from Google Sheet.')) {
+      clearCache();
+    }
+  });
+  fileInput.addEventListener('change', e => { if(e.target.files[0]) handleFile(e.target.files[0]); });
+  ['dragover','dragenter'].forEach(evt => dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.add('drag'); }));
+  ['dragleave','drop'].forEach(evt => dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.remove('drag'); }));
+  dropzone.addEventListener('drop', e => { if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+
+  document.querySelectorAll('.navitem[data-page]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.navitem[data-page]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentPage = btn.dataset.page;
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.getElementById('page-'+currentPage).classList.add('active');
+      const titles = {
+        overview:['Overview','Year-to-date P&L across the whole business'],
+        brands:['Brands','Profitability by brand'],
+        stores:['Stores','Profitability by physical store'],
+        products:['Products','Article-level profitability \u2014 winners and losers']
+      };
+      document.getElementById('pageTitle').textContent = titles[currentPage][0];
+      document.getElementById('pageSub').textContent = titles[currentPage][1];
+      renderCurrentPage();
+    });
+  });
+
+  document.getElementById('grApply').addEventListener('click', () => {
+    fromDate = document.getElementById('grFromDate').value || minDate;
+    toDate = document.getElementById('grToDate').value || maxDate;
+    renderCurrentPage();
+  });
+
+  // ========== RESET button – now sets From = Jan 1, To = max date ==========
+  document.getElementById('grReset').addEventListener('click', () => {
+    const now = new Date();
+    const firstDayOfYear = new Date(now.getFullYear(), 0, 1);
+    fromDate = toLocalDateStr(firstDayOfYear);
+    toDate = maxDate;   // keep the maximum date from data
+    document.getElementById('grFromDate').value = fromDate;
+    document.getElementById('grToDate').value = toDate;
+    renderCurrentPage();
+  });
+
+  // ---------- Parsing helpers ----------
+  function parseNum(v){
+    if(v == null || v === '') return 0;
+    if(typeof v === 'number') return v;
+    const n = parseFloat(String(v).replace(/,/g,''));
+    return isNaN(n) ? 0 : n;
+  }
+  function pad(n){ return String(n).padStart(2,'0'); }
+  function toISOAny(v){
+    if(v instanceof Date){ if(isNaN(v)) return null; return v.getUTCFullYear()+'-'+pad(v.getUTCMonth()+1)+'-'+pad(v.getUTCDate()); }
+    if(v == null || v === '') return null;
+    if(typeof v !== 'string') return null;
+    const s = v.trim();
+    let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if(m) return m[1]+'-'+m[2]+'-'+m[3];
+    m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if(m) return m[3]+'-'+pad(parseInt(m[1],10))+'-'+pad(parseInt(m[2],10));
+    const d = new Date(s);
+    if(!isNaN(d)) return d.getUTCFullYear()+'-'+pad(d.getUTCMonth()+1)+'-'+pad(d.getUTCDate());
+    return null;
+  }
+  function toMonthKey(iso){ return iso ? iso.slice(0,7) : null; }
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function monthLabel(m){
+    if(!m) return '';
+    const [y,mo] = m.split('-');
+    const names=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return names[parseInt(mo,10)-1] + " '" + y.slice(2);
+  }
+
+  function detectColumns(header){
+    const idx = {};
+    header.forEach((h,i) => {
+      const n = String(h||'').trim().toUpperCase();
+      const c = n.replace(/[^A-Z0-9]/g,'');
+      if(c.includes('QTY')) idx.qty=i;
+      else if(c==='DISCOUNTWITHVAT') idx.discountVAT=i;
+      else if(c==='DISCOUNT') idx.discount=i;
+      else if(c.includes('NETSALES')) idx.netSales=i;
+      else if(c==='STORES') idx.store=i;
+      else if(c.includes('LANDEDCOST')) idx.landedCost=i;
+      else if(c.includes('WSCOST')) idx.wsCost=i;
+      else if(c.includes('MARGIN')) { }
+      else if(c.includes('MONTHS')) idx.monthsLabel=i;
+      else if(c.includes('ARTICLE')) idx.article=i;
+      else if(c.includes('BRAND')) idx.brand=i;
+      else if(n==='DATE' || (c.includes('DATE') && idx.date===undefined)) idx.date=i;
+    });
+    return idx;
+  }
+
+  function rowsToRecords(rows, progressCallback){
+    const idx = detectColumns(rows[0]);
+    const out = [];
+    const total = rows.length - 1;
+    let processed = 0;
+    const startTime = performance.now();
+
+    for(let i=1;i<rows.length;i++){
+      const r = rows[i];
+      if(!r) continue;
+      const brandRaw = idx.brand>-1 ? r[idx.brand] : null;
+      const brand = brandRaw ? String(brandRaw).trim().toUpperCase() : null;
+      if(!brand) continue;
+      const iso = idx.date>-1 ? toISOAny(r[idx.date]) : null;
+      if(!iso) continue;
+
+      const qty = idx.qty>-1 ? parseNum(r[idx.qty]) : 0;
+      const discountVAT = idx.discountVAT>-1 ? parseNum(r[idx.discountVAT]) : 0;
+      const netSales = idx.netSales>-1 ? parseNum(r[idx.netSales]) : 0;
+      const landedCost = idx.landedCost>-1 ? parseNum(r[idx.landedCost]) : 0;
+      const wsCost = idx.wsCost>-1 ? parseNum(r[idx.wsCost]) : 0;
+      const storeRaw = idx.store>-1 ? r[idx.store] : null;
+      const store = storeRaw ? String(storeRaw).trim().toUpperCase() : 'UNKNOWN';
+      const article = idx.article>-1 ? (r[idx.article] || 'Unknown') : 'Unknown';
+
+      out.push({date:iso, month:toMonthKey(iso), brand, article, qty, discountVAT, netSales, landedCost, wsCost, store});
+
+      processed++;
+      if(processed % 1000 === 0 && progressCallback){
+        progressCallback(processed, total);
+      }
+    }
+    const elapsed = ((performance.now() - startTime) / 1000).toFixed(1);
+    console.log(`Parsed ${out.length} rows in ${elapsed}s`);
+    return out;
+  }
+
+  function handleFile(file){
+    emptyState.classList.remove('show');
+    loadingState.classList.add('show');
+    loadingText.textContent = 'Reading workbook\u2026 (large files can take a minute)';
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+
+    const reader = new FileReader();
+    reader.onload = e => setTimeout(() => {
+      try{
+        const wb = XLSX.read(e.target.result, {type:'array', cellDates:true, dense:true});
+        const sheetName = wb.SheetNames.includes('Data') ? 'Data' : (wb.SheetNames.includes('DATA') ? 'DATA' : wb.SheetNames[0]);
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], {header:1, raw:true, defval:null});
+        if(!rows.length){ loadingText.textContent = 'That sheet looks empty. Try a different file.'; return; }
+        const recs = rowsToRecords(rows, (p,t) => {
+          loadingText.textContent = `Parsing rows… ${p.toLocaleString()} / ${t.toLocaleString()}`;
+        });
+        finalizeRecords(recs, '\u25CF Loaded from uploaded file', true);
+      } catch(err){ loadingText.textContent = 'Could not read that file: ' + err.message; }
+    }, 30);
+    reader.readAsArrayBuffer(file);
+  }
+
+  // ---------- Fetch from Google Sheets API ----------
+  async function fetchSheetData(sheetName = 'Data') {
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(sheetName)}?key=${API_KEY}`;
+    const r = await fetch(url);
+    if(!r.ok) {
+      const txt = await r.text();
+      throw new Error(`Sheet "${sheetName}" (${r.status}): ${txt.slice(0,120)}`);
+    }
+    const j = await r.json();
+    const rows = j.values || [];
+    if(rows.length < 1) throw new Error(`Sheet "${sheetName}" is empty or not found`);
+    return rows;
+  }
+
+  // ========== finalizeRecords – set From = Jan 1, To = max date ==========
+  function finalizeRecords(recs, statusHtml, cacheIt){
+    if(!recs.length){ loadingText.textContent = 'No usable rows found \u2014 check the column headers.'; return; }
+    records = recs;
+    loadingText.textContent = 'Processing records…';
+    setTimeout(() => {
+      const brandSet=new Set(), storeSet=new Set();
+      let mn=null, mx=null;
+      const brandTotals = {};
+      recs.forEach(r => {
+        brandSet.add(r.brand); storeSet.add(r.store);
+        brandTotals[r.brand] = (brandTotals[r.brand]||0) + r.netSales;
+        if(mn===null||r.date<mn) mn=r.date;
+        if(mx===null||r.date>mx) mx=r.date;
+      });
+      minDate=mn; maxDate=mx;
+
+      // ---- change: From date = Jan 1 of current year, To date = maxDate ----
+      const now = new Date();
+      const firstDayOfYear = new Date(now.getFullYear(), 0, 1);
+      fromDate = toLocalDateStr(firstDayOfYear);
+      toDate = mx;   // keep the maximum date from the data
+
+      document.getElementById('grFromDate').value = fromDate;
+      document.getElementById('grToDate').value = toDate;
+      document.getElementById('boundsHint').textContent = 'Data available: ' + fmtDate(minDate) + ' \u2013 ' + fmtDate(maxDate);
+
+      allBrands = Array.from(brandSet).sort((a,b) => (brandTotals[b]||0)-(brandTotals[a]||0));
+      allStores = Array.from(storeSet).sort();
+
+      buildFilterDropdowns();
+
+      emptyState.classList.remove('show');
+      loadingState.classList.remove('show');
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.getElementById('page-overview').classList.add('active');
+      document.querySelectorAll('.navitem[data-page]').forEach(b => b.classList.remove('active'));
+      document.querySelector('.navitem[data-page="overview"]').classList.add('active');
+      document.getElementById('pageTitle').textContent = 'Overview';
+      document.getElementById('pageSub').textContent = 'Year-to-date P&L across the whole business';
+      currentPage = 'overview';
+      dateRangeBar.style.display = 'block';
+      loadNewBtn.style.display = 'block';
+      refreshSheetBtn.style.display = 'block';
+      clearCacheBtn.style.display = 'block';
+      syncStatus.textContent = statusHtml;
+
+      if(cacheIt){
+        const payload = {records: recs, savedAt: new Date().toISOString()};
+        cacheSet(CACHE_KEY, payload).then(ok => {
+          if(ok) console.log('Cache saved to IndexedDB');
+          else console.warn('Cache save failed');
+        });
+      }
+      loadingText.textContent = 'Building dashboard…';
+      setTimeout(() => {
+        renderCurrentPage();
+        loadingText.textContent = '';
+      }, 50);
+    }, 50);
+  }
+
+  function buildFilterDropdowns(){
+    const stSel = document.getElementById('st-brandFilter');
+    stSel.innerHTML = '<option value="">All Brands</option>' + allBrands.map(b=>`<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`).join('');
+    const brSel = document.getElementById('br-storeFilter');
+    brSel.innerHTML = '<option value="">All Stores</option>' + allStores.map(s=>`<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
+  }
+  document.getElementById('st-brandFilter').addEventListener('change', e => { stBrandFilterVal = e.target.value; renderCurrentPage(); });
+  document.getElementById('br-storeFilter').addEventListener('change', e => { brStoreFilterVal = e.target.value; renderCurrentPage(); });
+  document.getElementById('pr-brandFilter').addEventListener('change', e => { prBrandFilterVal = e.target.value; prPage=0; renderCurrentPage(); });
+  document.getElementById('pr-storeFilter').addEventListener('change', e => { prStoreFilterVal = e.target.value; prPage=0; renderCurrentPage(); });
+
+  function updateSyncStatus(text) {
+    if(text) {
+      syncStatus.textContent = text;
+    } else {
+      const status = dataSource === 'live' ? '🟢 Live' : dataSource === 'cached' ? '🟠 Offline' : '⚪ No data';
+      const time = lastSyncTime ? ` · ${lastSyncTime.toLocaleString()}` : '';
+      syncStatus.textContent = `${status}${time}`;
+    }
+  }
+
+  // ---------- Core load: cache first, then network ----------
+  function loadData(forceRefresh = false) {
+    if (!forceRefresh) {
+      loadingText.textContent = 'Loading from cache…';
+      cacheGet(CACHE_KEY).then(cached => {
+        if (cached && cached.records && cached.records.length) {
+          dataSource = 'cached';
+          lastSyncTime = cached.savedAt ? new Date(cached.savedAt) : null;
+          console.log('Using cached data (IndexedDB)');
+          finalizeRecords(cached.records, '\u25CF Offline cache \u2014 ' + (lastSyncTime ? lastSyncTime.toLocaleString() : 'unknown'), false);
+          updateSyncStatus();
+          fetchFromNetwork(true);
+          return;
+        } else {
+          console.log('No cache found, fetching from network');
+          fetchFromNetwork(false);
+        }
+      }).catch(err => {
+        console.warn('Cache read error:', err);
+        fetchFromNetwork(false);
+      });
+    } else {
+      emptyState.classList.remove('show');
+      loadingState.classList.add('show');
+      loadingText.textContent = 'Refreshing from Google Sheet…';
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      fetchFromNetwork(false);
+    }
+  }
+
+  refreshSheetBtn.addEventListener('click', () => loadData(true));
+
+  function fetchFromNetwork(silent) {
+    if (!silent) {
+      emptyState.classList.remove('show');
+      loadingState.classList.add('show');
+      loadingText.textContent = 'Fetching data from Google Sheet…';
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    }
+
+    fetchSheetData('Data')
+      .then(rows => {
+        if (!rows || rows.length < 2) throw new Error('No data rows returned');
+        loadingText.textContent = `Parsing ${(rows.length - 1).toLocaleString()} rows…`;
+        return new Promise((resolve) => {
+          setTimeout(() => {
+            const recs = rowsToRecords(rows, (p, t) => {
+              loadingText.textContent = `Parsing rows… ${p.toLocaleString()} / ${t.toLocaleString()}`;
+            });
+            resolve(recs);
+          }, 50);
+        });
+      })
+      .then(recs => {
+        if (!recs.length) throw new Error('No valid rows after parsing');
+        const now = new Date();
+        dataSource = 'live';
+        lastSyncTime = now;
+        loadingText.textContent = 'Processing records…';
+        setTimeout(() => {
+          finalizeRecords(recs, '\u25CF Live from Google Sheet \u00B7 ' + now.toLocaleTimeString(), true);
+          updateSyncStatus();
+          console.log('Network fetch successful, cache updated.');
+        }, 50);
+      })
+      .catch(err => {
+        console.warn('Network fetch failed:', err.message);
+        if (silent) {
+          updateSyncStatus();
+          return;
+        }
+        cacheGet(CACHE_KEY).then(cached => {
+          if (cached && cached.records && cached.records.length) {
+            dataSource = 'cached';
+            lastSyncTime = cached.savedAt ? new Date(cached.savedAt) : null;
+            finalizeRecords(cached.records, '\u25CF Offline fallback \u2014 ' + (lastSyncTime ? lastSyncTime.toLocaleString() : 'unknown'), false);
+            syncStatus.textContent = '\u26A0 Could not reach sheet, showing cached data';
+          } else {
+            loadingState.classList.remove('show');
+            emptyState.classList.add('show');
+            syncStatus.textContent = '\u26A0 Error: ' + err.message + ' – please check your internet or upload a file.';
+          }
+        });
+      });
+  }
+
+  // ---------- Filtering ----------
+  function getFiltered(){
+    const from = fromDate || minDate, to = toDate || maxDate;
+    return records.filter(r => r.date >= from && r.date <= to);
+  }
+
+  function computePnL(rows){
+    let qty=0, netSales=0, discountVAT=0, landedCost=0, wsCost=0;
+    rows.forEach(r => { qty+=r.qty; netSales+=r.netSales; discountVAT+=r.discountVAT; landedCost+=r.landedCost; wsCost+=r.wsCost; });
+    const gross = netSales + discountVAT;
+    const discPct = gross ? discountVAT/gross*100 : 0;
+    const profitLC = netSales - landedCost;
+    const marginLC = netSales ? profitLC/netSales*100 : 0;
+    const profitWS = netSales - wsCost;
+    const marginWS = netSales ? profitWS/netSales*100 : 0;
+    return {qty, netSales, discountVAT, discPct, landedCost, profitLC, marginLC, wsCost, profitWS, marginWS};
+  }
+  function groupRows(data, keyFn){
+    const m = {};
+    data.forEach(r => { const k=keyFn(r); if(!m[k]) m[k]=[]; m[k].push(r); });
+    return m;
+  }
+  const METRICS = {
+    netSales:{label:'Net Sales', fmt:fmtMoney, color:'#2F6FED'},
+    profitLC:{label:'Profit (LC)', fmt:fmtMoney, color:'#34C77B'},
+    profitWS:{label:'Profit (WS)', fmt:fmtMoney, color:'#F2A93B'},
+    qty:{label:'Units', fmt:fmtNum, color:'#8B6FED'},
+    discount:{label:'Discount', fmt:fmtMoney, color:'#E2544B'}
+  };
+  function metricVal(p, key){ return key==='discount' ? p.discountVAT : p[key]; }
+  function destroy(key){ if(charts[key]){ charts[key].destroy(); delete charts[key]; } }
+  function dateLineHTML(data){
+    if(!data.length) return 'No data in this range.';
+    let mn=data[0].date, mx=data[0].date;
+    data.forEach(r=>{ if(r.date<mn) mn=r.date; if(r.date>mx) mx=r.date; });
+    return 'Showing <b>'+fmtDate(mn)+'</b> to <b>'+fmtDate(mx)+'</b> &middot; '+fmtNum(data.length)+' line items';
+  }
+
+  function renderCurrentPage(){
+    const data = getFiltered();
+    if(currentPage==='overview') renderOverview(data);
+    else if(currentPage==='brands') renderBrandsPage(data);
+    else if(currentPage==='stores') renderStoresPage(data);
+    else if(currentPage==='products') renderProducts(data);
+  }
+
+  // ============ OVERVIEW ============
+  function renderOverview(data){
+    document.getElementById('ov-dateLine').innerHTML = dateLineHTML(data);
+    const pnl = computePnL(data);
+    document.getElementById('ov-scoreboard1').innerHTML = `
+      <div class="kpi"><div class="label">Net Sales</div><div class="value display">${fmtMoney(pnl.netSales)}</div></div>
+      <div class="kpi amber"><div class="label">Units Sold</div><div class="value display">${fmtNum(pnl.qty)}</div></div>
+      <div class="kpi"><div class="label">Discount Given</div><div class="value display">${fmtMoney(pnl.discountVAT)}</div></div>
+      <div class="kpi"><div class="label">Discount %</div><div class="value display">${fmtPct(pnl.discPct)}</div></div>
+      <div class="kpi green"><div class="label">Avg Selling Price</div><div class="value display">${fmtMoney(pnl.qty?pnl.netSales/pnl.qty:0)}</div></div>
+    `;
+    document.getElementById('ov-scoreboard2').innerHTML = `
+      <div class="kpi ${pnl.profitLC<0?'red':'green'}"><div class="label">Profit (Landed Cost)</div><div class="value display ${pnl.profitLC<0?'neg':''}">${fmtMoney(pnl.profitLC)}</div></div>
+      <div class="kpi ${pnl.marginLC<0?'red':'green'}"><div class="label">Margin % (LC)</div><div class="value display ${pnl.marginLC<0?'neg':''}">${fmtPct(pnl.marginLC)}</div></div>
+      <div class="kpi ${pnl.profitWS<0?'red':'amber'}"><div class="label">Profit (WS Cost)</div><div class="value display ${pnl.profitWS<0?'neg':''}">${fmtMoney(pnl.profitWS)}</div></div>
+      <div class="kpi ${pnl.marginWS<0?'red':'amber'}"><div class="label">Margin % (WS)</div><div class="value display ${pnl.marginWS<0?'neg':''}">${fmtPct(pnl.marginWS)}</div></div>
+    `;
+
+    const byMonth = groupRows(data, r=>r.month);
+    const months = Object.keys(byMonth).sort();
+    const vals = months.map(m => metricVal(computePnL(byMonth[m]), ovTrendMetric));
+    destroy('ovTrend');
+    charts.ovTrend = new Chart(document.getElementById('ov-trendChart'), {
+      type:'line',
+      data:{labels:months.map(monthLabel), datasets:[{data:vals, borderColor:METRICS[ovTrendMetric].color, backgroundColor:METRICS[ovTrendMetric].color+'26', fill:true, tension:0.3, pointRadius:3, pointBackgroundColor:METRICS[ovTrendMetric].color}]},
+      options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>METRICS[ovTrendMetric].fmt(c.parsed.y)}}},
+        scales:{y:{ticks:{color:'#8B95A8'}, grid:{color:'#233A5C'}}, x:{ticks:{color:'#8B95A8'}, grid:{display:false}}}}
+    });
+
+    const byBrand = groupRows(data, r=>r.brand);
+    const brandEntries = Object.keys(byBrand).map(b => [b, computePnL(byBrand[b]).netSales]).sort((a,b)=>b[1]-a[1]);
+    const top6 = brandEntries.slice(0,6);
+    const other = brandEntries.slice(6).reduce((a,t)=>a+t[1],0);
+    const bLabels = top6.map(t=>t[0]).concat(other>0?['Other']:[]);
+    const bVals = top6.map(t=>t[1]).concat(other>0?[other]:[]);
+    destroy('ovBrand');
+    charts.ovBrand = new Chart(document.getElementById('ov-brandDonut'), {
+      type:'doughnut',
+      data:{labels:bLabels, datasets:[{data:bVals, backgroundColor:COLORS, borderColor:'#0E1A2E', borderWidth:2}]},
+      options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'right', labels:{color:'#B7C0D1', boxWidth:12, font:{size:11}}}, tooltip:{callbacks:{label:c=>c.label+': '+fmtMoney(c.parsed)}}}}
+    });
+
+    renderBrandDrilldown('ov-drilldown', data, ovDrillBrand, (b)=>{ ovDrillBrand=b; renderCurrentPage(); });
+  }
+  document.getElementById('ov-trendToggle').addEventListener('click', e => {
+    const btn = e.target.closest('button'); if(!btn) return;
+    document.querySelectorAll('#ov-trendToggle button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active'); ovTrendMetric = btn.dataset.metric; renderCurrentPage();
+  });
+
+  // ---------- Reusable drilldown panels ----------
+  let drillMetric = {};
+  function metricToggleHTML(containerId){
+    const cur = drillMetric[containerId] || 'netSales';
+    return '<div class="metric-toggle" id="'+containerId+'-metricToggle" style="display:flex;background:var(--navy-800);border:1px solid var(--line);border-radius:7px;padding:3px;gap:2px;flex-wrap:wrap;">' +
+      Object.keys(METRICS).map(k => '<button class="'+(k===cur?'active':'')+'" data-metric="'+k+'">'+METRICS[k].label+'</button>').join('') + '</div>';
+  }
+  function bindMetricToggle(containerId, rerender){
+    document.getElementById(containerId+'-metricToggle').addEventListener('click', e => {
+      const btn = e.target.closest('button'); if(!btn) return;
+      drillMetric[containerId] = btn.dataset.metric;
+      rerender();
+    });
+  }
+  function miniScoreboardHTML(pnl){
+    return `<div class="scoreboard" style="margin-bottom:10px;">
+      <div class="kpi"><div class="label">Net Sales</div><div class="value display" style="font-size:16px;">${fmtMoney(pnl.netSales)}</div></div>
+      <div class="kpi amber"><div class="label">Units Sold</div><div class="value display" style="font-size:16px;">${fmtNum(pnl.qty)}</div></div>
+      <div class="kpi"><div class="label">Discount Given</div><div class="value display" style="font-size:16px;">${fmtMoney(pnl.discountVAT)}</div></div>
+      <div class="kpi"><div class="label">Discount %</div><div class="value display" style="font-size:16px;">${fmtPct(pnl.discPct)}</div></div>
+      <div class="kpi green"><div class="label">Avg Selling Price</div><div class="value display" style="font-size:16px;">${fmtMoney(pnl.qty?pnl.netSales/pnl.qty:0)}</div></div>
+    </div>
+    <div class="scoreboard cols4" style="margin-bottom:14px;">
+      <div class="kpi ${pnl.profitLC<0?'red':'green'}"><div class="label">Profit (Landed Cost)</div><div class="value display ${pnl.profitLC<0?'neg':''}" style="font-size:16px;">${fmtMoney(pnl.profitLC)}</div></div>
+      <div class="kpi ${pnl.marginLC<0?'red':'green'}"><div class="label">Margin % (LC)</div><div class="value display ${pnl.marginLC<0?'neg':''}" style="font-size:16px;">${fmtPct(pnl.marginLC)}</div></div>
+      <div class="kpi ${pnl.profitWS<0?'red':'amber'}"><div class="label">Profit (WS Cost)</div><div class="value display ${pnl.profitWS<0?'neg':''}" style="font-size:16px;">${fmtMoney(pnl.profitWS)}</div></div>
+      <div class="kpi ${pnl.marginWS<0?'red':'amber'}"><div class="label">Margin % (WS)</div><div class="value display ${pnl.marginWS<0?'neg':''}" style="font-size:16px;">${fmtPct(pnl.marginWS)}</div></div>
+    </div>`;
+  }
+  function renderBrandDrilldown(containerId, data, selectedBrand, onChange){
+    const el = document.getElementById(containerId);
+    const brands = Array.from(new Set(data.map(r=>r.brand))).sort();
+    if(!selectedBrand || !brands.includes(selectedBrand)) selectedBrand = brands[0];
+    const metric = drillMetric[containerId] || 'netSales';
+    const brandData = data.filter(r=>r.brand===selectedBrand);
+    const pnl = computePnL(brandData);
+    el.innerHTML = `
+      <div class="drilldown-head">
+        <span class="info-icon" title="Pick a brand to see its own scorecard, sales trend, and store mix.">i</span>
+        <h3 style="margin:0;">Brand Drilldown</h3>
+        <select class="select-box" id="${containerId}-sel"></select>
+      </div>
+      ${miniScoreboardHTML(pnl)}
+      <div class="grid2" style="margin-bottom:0;">
+        <div>
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
+            <p class="panel-sub" style="margin:0;">Monthly ${METRICS[metric].label.toLowerCase()}</p>
+            ${metricToggleHTML(containerId)}
+          </div>
+          <canvas id="${containerId}-trend"></canvas>
+        </div>
+        <div><p class="panel-sub">Store mix for this brand</p><canvas id="${containerId}-mix"></canvas></div>
+      </div>`;
+    const sel = document.getElementById(containerId+'-sel');
+    sel.innerHTML = brands.map(b=>`<option value="${escapeHtml(b)}" ${b===selectedBrand?'selected':''}>${escapeHtml(b)}</option>`).join('');
+    sel.addEventListener('change', e => onChange(e.target.value));
+    bindMetricToggle(containerId, () => renderBrandDrilldown(containerId, data, selectedBrand, onChange));
+
+    const byMonth = groupRows(brandData, r=>r.month);
+    const months = Object.keys(byMonth).sort();
+    destroy(containerId+'trend');
+    charts[containerId+'trend'] = new Chart(document.getElementById(containerId+'-trend'), {
+      type:'line',
+      data:{labels:months.map(monthLabel), datasets:[{data:months.map(m=>metricVal(computePnL(byMonth[m]), metric)), borderColor:METRICS[metric].color, backgroundColor:METRICS[metric].color+'26', fill:true, tension:0.3, pointRadius:3, pointBackgroundColor:METRICS[metric].color}]},
+      options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>METRICS[metric].fmt(c.parsed.y)}}},
+        scales:{y:{ticks:{color:'#8B95A8'}, grid:{color:'#233A5C'}}, x:{ticks:{color:'#8B95A8'}, grid:{display:false}}}}
+    });
+
+    const byStore = groupRows(brandData, r=>r.store);
+    const storeEntries = Object.keys(byStore).map(s=>[s, computePnL(byStore[s]).netSales]).sort((a,b)=>b[1]-a[1]);
+    destroy(containerId+'mix');
+    charts[containerId+'mix'] = new Chart(document.getElementById(containerId+'-mix'), {
+      type:'doughnut',
+      data:{labels:storeEntries.map(t=>t[0]), datasets:[{data:storeEntries.map(t=>t[1]), backgroundColor:COLORS, borderColor:'#0E1A2E', borderWidth:2}]},
+      options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'right', labels:{color:'#B7C0D1', boxWidth:10, font:{size:10.5}}}, tooltip:{callbacks:{label:c=>c.label+': '+fmtMoney(c.parsed)}}}}
+    });
+  }
+
+  function renderStoreDrilldown(containerId, data, selectedStore, onChange){
+    const el = document.getElementById(containerId);
+    const stores = Array.from(new Set(data.map(r=>r.store))).sort();
+    if(!selectedStore || !stores.includes(selectedStore)) selectedStore = stores[0];
+    const metric = drillMetric[containerId] || 'netSales';
+    const storeData = data.filter(r=>r.store===selectedStore);
+    const pnl = computePnL(storeData);
+    el.innerHTML = `
+      <div class="drilldown-head">
+        <span class="info-icon" title="Pick a store to see its own scorecard, sales trend, and brand mix.">i</span>
+        <h3 style="margin:0;">Store Drilldown</h3>
+        <select class="select-box" id="${containerId}-sel"></select>
+      </div>
+      ${miniScoreboardHTML(pnl)}
+      <div class="grid2" style="margin-bottom:0;">
+        <div>
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
+            <p class="panel-sub" style="margin:0;">Monthly ${METRICS[metric].label.toLowerCase()}</p>
+            ${metricToggleHTML(containerId)}
+          </div>
+          <canvas id="${containerId}-trend"></canvas>
+        </div>
+        <div><p class="panel-sub">Brand mix for this store</p><canvas id="${containerId}-mix"></canvas></div>
+      </div>`;
+    const sel = document.getElementById(containerId+'-sel');
+    sel.innerHTML = stores.map(s=>`<option value="${escapeHtml(s)}" ${s===selectedStore?'selected':''}>${escapeHtml(s)}</option>`).join('');
+    sel.addEventListener('change', e => onChange(e.target.value));
+    bindMetricToggle(containerId, () => renderStoreDrilldown(containerId, data, selectedStore, onChange));
+
+    const byMonth = groupRows(storeData, r=>r.month);
+    const months = Object.keys(byMonth).sort();
+    destroy(containerId+'trend');
+    charts[containerId+'trend'] = new Chart(document.getElementById(containerId+'-trend'), {
+      type:'line',
+      data:{labels:months.map(monthLabel), datasets:[{data:months.map(m=>metricVal(computePnL(byMonth[m]), metric)), borderColor:METRICS[metric].color, backgroundColor:METRICS[metric].color+'26', fill:true, tension:0.3, pointRadius:3, pointBackgroundColor:METRICS[metric].color}]},
+      options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>METRICS[metric].fmt(c.parsed.y)}}},
+        scales:{y:{ticks:{color:'#8B95A8'}, grid:{color:'#233A5C'}}, x:{ticks:{color:'#8B95A8'}, grid:{display:false}}}}
+    });
+
+    const byBrand = groupRows(storeData, r=>r.brand);
+    const brandEntries = Object.keys(byBrand).map(b=>[b, computePnL(byBrand[b]).netSales]).sort((a,b)=>b[1]-a[1]);
+    destroy(containerId+'mix');
+    charts[containerId+'mix'] = new Chart(document.getElementById(containerId+'-mix'), {
+      type:'doughnut',
+      data:{labels:brandEntries.map(t=>t[0]), datasets:[{data:brandEntries.map(t=>t[1]), backgroundColor:COLORS, borderColor:'#0E1A2E', borderWidth:2}]},
+      options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'right', labels:{color:'#B7C0D1', boxWidth:10, font:{size:10.5}}}, tooltip:{callbacks:{label:c=>c.label+': '+fmtMoney(c.parsed)}}}}
+    });
+  }
+
+  // ---------- Shared grouped P&L table with nested month + drill ----------
+  function pnlRowCells(p){
+    return `<td>${fmtNum(p.qty)}</td><td>${fmtMoney(p.netSales)}</td><td>${fmtMoney(p.discountVAT)}</td><td>${fmtPct(p.discPct)}</td>
+      <td>${fmtMoney(p.landedCost)}</td><td class="${p.profitLC<0?'neg':''}">${fmtMoney(p.profitLC)}</td><td class="${p.marginLC<0?'neg':''}">${fmtPct(p.marginLC)}</td>
+      <td>${fmtMoney(p.wsCost)}</td><td class="${p.profitWS<0?'neg':''}">${fmtMoney(p.profitWS)}</td><td class="${p.marginWS<0?'neg':''}">${fmtPct(p.marginWS)}</td>`;
+  }
+
+  function renderPnLTable(tableId, data, keyField, expandKey, drillField) {
+    const groups = groupRows(data, r=>r[keyField]);
+    const groupNames = Object.keys(groups);
+    const groupPnL = {};
+    groupNames.forEach(g => groupPnL[g] = computePnL(groups[g]));
+    const ranked = groupNames.sort((a,b) => groupPnL[b].netSales - groupPnL[a].netSales);
+
+    const thead = `<tr><th>Name</th><th>Units</th><th>Net Sales</th><th>Discount</th><th>Disc %</th><th>Landed Cost</th><th>Profit LC</th><th>Margin % LC</th><th>WS Cost</th><th>Profit WS</th><th>Margin % WS</th></tr>`;
+    let body = '';
+
+    const monthSet = expandMonth[expandKey] || new Set();
+
+    ranked.forEach(g => {
+      const p = groupPnL[g];
+      const expanded = expandState[expandKey].has(g);
+      body += `<tr class="group-row ${expanded?'expanded':''}" data-key="${escapeHtml(g)}"><td>${escapeHtml(g)}</td>${pnlRowCells(p)}</tr>`;
+      if (expanded) {
+        const byMonth = groupRows(groups[g], r=>r.month);
+        const months = Object.keys(byMonth).sort().reverse();
+        months.forEach(m => {
+          const monthPnl = computePnL(byMonth[m]);
+          const monthKey = g + '|' + m;
+          const monthExpanded = monthSet.has(monthKey);
+          body += `<tr class="sub-row month-row ${monthExpanded?'expanded':''}" data-parent="${escapeHtml(g)}" data-month="${escapeHtml(m)}"><td>${monthLabel(m)}</td>${pnlRowCells(monthPnl)}</tr>`;
+          if (monthExpanded) {
+            const drillGroups = groupRows(byMonth[m], r=>r[drillField]);
+            const drillNames = Object.keys(drillGroups).sort((a,b) => {
+              const pA = computePnL(drillGroups[a]);
+              const pB = computePnL(drillGroups[b]);
+              return pB.netSales - pA.netSales;
+            });
+            drillNames.forEach(d => {
+              const drillPnl = computePnL(drillGroups[d]);
+              body += `<tr class="drill-row"><td>${escapeHtml(d)}</td>${pnlRowCells(drillPnl)}</tr>`;
+            });
+          }
+        });
+      }
+    });
+
+    const grand = computePnL(data);
+    body += `<tr class="total-row"><td>Grand Total</td>${pnlRowCells(grand)}</tr>`;
+
+    const tableEl = document.getElementById(tableId);
+    tableEl.innerHTML = `<thead>${thead}</thead><tbody>${body || '<tr><td colspan="11" class="empty-note">No data for this selection.</td></tr>'}</tbody>`;
+
+    tableEl.querySelectorAll('tr.group-row').forEach(tr => {
+      tr.addEventListener('click', () => {
+        const k = tr.dataset.key;
+        if (expandState[expandKey].has(k)) expandState[expandKey].delete(k);
+        else expandState[expandKey].add(k);
+        renderCurrentPage();
+      });
+    });
+
+    tableEl.querySelectorAll('tr.month-row').forEach(tr => {
+      tr.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const parent = tr.dataset.parent;
+        const month = tr.dataset.month;
+        const key = parent + '|' + month;
+        const set = expandMonth[expandKey];
+        if (set.has(key)) set.delete(key);
+        else set.add(key);
+        renderCurrentPage();
+      });
+    });
+  }
+
+  // ============ BRANDS ============
+  function renderBrandsPage(data){
+    document.getElementById('br-dateLine').innerHTML = dateLineHTML(data);
+    document.getElementById('br-storeFilter').value = brStoreFilterVal;
+    const scoped = brStoreFilterVal ? data.filter(r=>r.store===brStoreFilterVal) : data;
+    renderPnLTable('br-table', scoped, 'brand', 'brands', 'store');
+    renderBrandDrilldown('br-drilldown', scoped, brDrillBrand, (b)=>{ brDrillBrand=b; renderCurrentPage(); });
+  }
+
+  // ============ STORES ============
+  function renderStoresPage(data){
+    document.getElementById('st-dateLine').innerHTML = dateLineHTML(data);
+    document.getElementById('st-brandFilter').value = stBrandFilterVal;
+    const scoped = stBrandFilterVal ? data.filter(r=>r.brand===stBrandFilterVal) : data;
+    renderPnLTable('st-table', scoped, 'store', 'stores', 'brand');
+    renderStoreDrilldown('st-drilldown', scoped, stDrillStore, (s)=>{ stDrillStore=s; renderCurrentPage(); });
+  }
+
+  // ============ PRODUCTS (with equal widths & clickable links) ============
+  function renderProducts(data){
+    document.getElementById('pr-dateLine').innerHTML = dateLineHTML(data);
+
+    const brandsAvailable = Array.from(new Set(data.filter(r=> !prStoreFilterVal || r.store===prStoreFilterVal).map(r=>r.brand))).sort();
+    const storesAvailable = Array.from(new Set(data.filter(r=> !prBrandFilterVal || r.brand===prBrandFilterVal).map(r=>r.store))).sort();
+    if(prBrandFilterVal && !brandsAvailable.includes(prBrandFilterVal)) prBrandFilterVal = '';
+    if(prStoreFilterVal && !storesAvailable.includes(prStoreFilterVal)) prStoreFilterVal = '';
+
+    const brandSel = document.getElementById('pr-brandFilter');
+    brandSel.innerHTML = '<option value="">All Brands</option>' + brandsAvailable.map(b=>`<option value="${escapeHtml(b)}" ${b===prBrandFilterVal?'selected':''}>${escapeHtml(b)}</option>`).join('');
+    const storeSel = document.getElementById('pr-storeFilter');
+    storeSel.innerHTML = '<option value="">All Stores</option>' + storesAvailable.map(s=>`<option value="${escapeHtml(s)}" ${s===prStoreFilterVal?'selected':''}>${escapeHtml(s)}</option>`).join('');
+
+    let scoped = data;
+    if(prBrandFilterVal) scoped = scoped.filter(r=>r.brand===prBrandFilterVal);
+    if(prStoreFilterVal) scoped = scoped.filter(r=>r.store===prStoreFilterVal);
+
+    const groups = groupRows(scoped, r=>r.brand+'|'+r.article);
+    const items = Object.keys(groups).map(k => {
+      const [brand,article] = k.split('|');
+      return {brand, article, ...computePnL(groups[k])};
+    });
+
+    // Helper for product link
+    function productLink(brand, article) {
+      const query = encodeURIComponent(article + ' ' + brand);
+      return `<a href="https://www.google.com/search?q=${query}&tbm=isch" target="_blank">${escapeHtml(brand)} · ${escapeHtml(article)}</a>`;
+    }
+
+    // Leaderboards
+    const byProfit = [...items].sort((a,b)=>b.profitLC-a.profitLC);
+    const top = byProfit.slice(0,8);
+    const bottom = byProfit.filter(i=>i.profitLC<0).slice(-8).reverse();
+
+    document.getElementById('pr-topLeaderboard').innerHTML = top.length ? top.map((t,i)=>`
+      <div class="lb-row"><div class="lb-rank">${i+1}</div>
+        <div class="lb-info">
+          <div class="lb-name">${productLink(t.brand, t.article)}</div>
+          <div class="lb-meta">${fmtMoney(t.netSales)} sales, ${fmtPct(t.marginLC)} margin</div>
+        </div>
+        <div class="lb-value">${fmtMoney(t.profitLC)}</div></div>
+    `).join('') : '<div class="empty-note">No data for this selection.</div>';
+
+    document.getElementById('pr-bottomLeaderboard').innerHTML = bottom.length ? bottom.map((t,i)=>`
+      <div class="lb-row"><div class="lb-rank">${i+1}</div>
+        <div class="lb-info">
+          <div class="lb-name">${productLink(t.brand, t.article)}</div>
+          <div class="lb-meta">${fmtMoney(t.netSales)} sales, ${fmtPct(t.marginLC)} margin</div>
+        </div>
+        <div class="lb-value warn">${fmtMoney(t.profitLC)}</div></div>
+    `).join('') : '<div class="empty-note">No loss-making articles in this selection.</div>';
+
+    const byUnits = [...items].sort((a,b)=>b.qty-a.qty).slice(0,10);
+    document.getElementById('pr-topUnitsLeaderboard').innerHTML = byUnits.length ? byUnits.map((t,i)=>`
+      <div class="lb-row"><div class="lb-rank">${i+1}</div>
+        <div class="lb-info">
+          <div class="lb-name">${productLink(t.brand, t.article)}</div>
+          <div class="lb-meta">${fmtMoney(t.netSales)} sales</div>
+        </div>
+        <div class="lb-value">${fmtNum(t.qty)} u</div></div>
+    `).join('') : '<div class="empty-note">No data for this selection.</div>';
+
+    const byValue = [...items].sort((a,b)=>b.netSales-a.netSales).slice(0,10);
+    document.getElementById('pr-topValueLeaderboard').innerHTML = byValue.length ? byValue.map((t,i)=>`
+      <div class="lb-row"><div class="lb-rank">${i+1}</div>
+        <div class="lb-info">
+          <div class="lb-name">${productLink(t.brand, t.article)}</div>
+          <div class="lb-meta">${fmtNum(t.qty)} units sold</div>
+        </div>
+        <div class="lb-value">${fmtMoney(t.netSales)}</div></div>
+    `).join('') : '<div class="empty-note">No data for this selection.</div>';
+
+    // All Articles table – with clickable article links
+    renderProductTable(items);
+  }
+
+  function renderProductTable(items){
+    let filtered = items;
+    if(prSearch){
+      const q = prSearch.toLowerCase();
+      filtered = filtered.filter(i => i.article.toLowerCase().includes(q) || i.brand.toLowerCase().includes(q));
+    }
+    filtered = [...filtered].sort((a,b) => {
+      const v1=a[prSort.key], v2=b[prSort.key];
+      const cmp = typeof v1==='string' ? v1.localeCompare(v2) : v1-v2;
+      return prSort.dir==='asc' ? cmp : -cmp;
+    });
+    const totalPages = Math.max(1, Math.ceil(filtered.length/prPageSize));
+    prPage = Math.min(prPage, totalPages-1);
+    const pageItems = filtered.slice(prPage*prPageSize, prPage*prPageSize+prPageSize);
+
+    // Helper for article link
+    function articleLink(brand, article) {
+      const query = encodeURIComponent(article + ' ' + brand);
+      return `<a href="https://www.google.com/search?q=${query}&tbm=isch" target="_blank">${escapeHtml(article)}</a>`;
+    }
+
+    // Original columns: Brand, Article, Units, Net Sales, Disc %, Profit LC, Margin % LC, Profit WS, Margin % WS
+    const cols = [
+      {key:'brand', label:'Brand'},
+      {key:'article', label:'Article'},
+      {key:'qty', label:'Units'},
+      {key:'netSales', label:'Net Sales'},
+      {key:'discPct', label:'Disc %'},
+      {key:'profitLC', label:'Profit LC'},
+      {key:'marginLC', label:'Margin % LC'},
+      {key:'profitWS', label:'Profit WS'},
+      {key:'marginWS', label:'Margin % WS'}
+    ];
+    const thead = '<tr>' + cols.map(c => `<th data-key="${c.key}" style="${prSort.key===c.key?'color:#5C8CF2':''}">${c.label}${prSort.key===c.key?(prSort.dir==='asc'?' \u2191':' \u2193'):''}</th>`).join('') + '</tr>';
+    const tbody = pageItems.length ? pageItems.map(i => `
+      <tr>
+        <td style="text-align:left;">${escapeHtml(i.brand)}</td>
+        <td style="text-align:left;">${articleLink(i.brand, i.article)}</td>
+        <td>${fmtNum(i.qty)}</td>
+        <td>${fmtMoney(i.netSales)}</td>
+        <td>${fmtPct(i.discPct)}</td>
+        <td class="${i.profitLC<0?'neg':''}">${fmtMoney(i.profitLC)}</td>
+        <td class="${i.marginLC<0?'neg':''}">${fmtPct(i.marginLC)}</td>
+        <td class="${i.profitWS<0?'neg':''}">${fmtMoney(i.profitWS)}</td>
+        <td class="${i.marginWS<0?'neg':''}">${fmtPct(i.marginWS)}</td>
+      </tr>
+    `).join('') : '<tr><td colspan="9" class="empty-note">No items match.</td></tr>';
+
+    const tableEl = document.getElementById('pr-table');
+    tableEl.innerHTML = `<thead>${thead}</thead><tbody>${tbody}</tbody>`;
+    // set text alignment
+    Array.from(tableEl.querySelectorAll('thead th')).forEach((cell,idx) => {
+      cell.style.textAlign = (idx < 2) ? 'left' : 'right';
+    });
+    tableEl.querySelectorAll('th[data-key]').forEach(th => {
+      th.style.cursor='pointer';
+      th.addEventListener('click', () => {
+        const key = th.dataset.key;
+        if(prSort.key===key) prSort.dir = prSort.dir==='asc' ? 'desc' : 'asc';
+        else { prSort.key = key; prSort.dir = 'desc'; }
+        renderProductTable(items);
+      });
+    });
+    document.getElementById('pr-pageLabel').textContent = `Page ${prPage+1} of ${totalPages}`;
+  }
+
+  document.getElementById('pr-search').addEventListener('input', e => { prSearch = e.target.value; prPage = 0; renderCurrentPage(); });
+  document.getElementById('pr-prev').addEventListener('click', () => { if(prPage>0){ prPage--; renderCurrentPage(); } });
+  document.getElementById('pr-next').addEventListener('click', () => { prPage++; renderCurrentPage(); });
+
+  // ============ 启动 ============
+  emptyState.classList.remove('show');
+  loadingState.classList.add('show');
+  loadingText.textContent = 'Loading data…';
+  loadData(false);
+})();
+</script>
+</body>
+</html>
